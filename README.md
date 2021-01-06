@@ -11,4 +11,6 @@ Finish consumeb implementation
 
 Add True safety using multiprocessing manager
 
+Early Stage, Backwards compatibility not guaranteed or expected
+
 MIT
