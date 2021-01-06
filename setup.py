@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="pheidi", # Replace with your own username
-    version="0.0.1",
+    version="0.0.11",
     author="Austin",
     author_email="",
     description="High speed ring buffer messaging system using shared memory",
