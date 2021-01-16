@@ -2,6 +2,7 @@ from multiprocessing import shared_memory
 import msgpack
 import msgpack_numpy as m
 import copy
+#from time import time, sleep
 
 m.patch()
 
@@ -170,6 +171,7 @@ class Consumer:
         else:
             self.read_pos_mem = shared_memory.SharedMemory(self.con_name)
             self.con_lock_mem = shared_memory.SharedMemory(self.con_name + "lock")
+            self.write_lock_mem = shared_memory.SharedMemory(name=self.name + "lock")
 
         # Get Block Size
         self.block_size_mem = shared_memory.SharedMemory(name=self.name + "block_size")
@@ -193,8 +195,10 @@ class Consumer:
 
         self._set_num_buffer(self.read_pos, 32, self.read_pos_mem.buf)
 
-    def consume(self, safe=True, minq=None, maxq=None):
+    def consume(self, safe=True, minq=None, maxq=None,skip_overflow = False,report_overflow = False):
         """Consumes messages serialized by publish"""
+        if report_overflow == True:
+            assert skip_overflow == True,'Cannot Report Overflow Unless Skipping!'
         if safe:
             while True:
                 if int.from_bytes(self.con_lock_mem.buf, "big") == 0:
@@ -202,22 +206,44 @@ class Consumer:
                     break
                 else:
                     continue
-
+        if skip_overflow:
+            while True:
+                if in.from_bytes(self.write_lock_mem.buf,"big")==0:
+                    self._set_num_buffer(1,1,self.con_lock_mem.buf)
+                    break
+                else:
+                    continue
+        #Get Write Read Position
         self.read_pos = self._get_num_buffer(self.read_pos_mem.buf)
         self.writer_pos = copy.copy(self._get_num_buffer(self.writer_pos_mem.buf))
+        #Block if min number of messages not met
         if minq is not None:
             while (self.writer_pos - self.read_pos) // self.block_size < minq:
                 # print((self.writer_pos - self.read_pos) // self.block_size)
                 self.writer_pos = copy.copy(
                     self._get_num_buffer(self.writer_pos_mem.buf)
                 )
-
+        #If set total blocks to be sent as writerpos - readpos
         total_blocks = (self.writer_pos - self.read_pos) // self.block_size
+        #If maxq set, pull back total blocks to maxq
         if maxq is not None:
             total_blocks = min(total_blocks, maxq)
+        #If skipping overflow first check if overflow exists, then if it does exist adjust read position to after overflow position
 
-        if total_blocks / self.qsize > 1:
-            raise ValueError("Queue Overflow! Consumer not fast enough")
+        if skip_overflow:
+            if total_blocks / self.qsize > 1:
+                overflow =
+                new_read_pos = self.writer_pos - (self.qsize * self.block_size)
+                overflow = (new_read_pos - self.read_pos)//self.block_size
+                self.read_pos = new_read_pos
+            #If maxq is not set, then total blocks probably is too far forward, so reset to new level
+            if maxq is None:
+                total_blocks = (self.writer_pos - self.read_pos) // self.block_size
+
+
+        else:
+            if total_blocks / self.qsize > 1:
+                raise ValueError("Queue Overflow! Consumer not fast enough")
 
         blocks_to_end = self.qsize - ((self.read_pos // self.block_size) % self.qsize)
         start_byte = ((self.read_pos // self.block_size) % self.qsize) * self.block_size
@@ -240,6 +266,8 @@ class Consumer:
 
         if safe:
             self._set_num_buffer(0, 1, self.con_lock_mem.buf)
+        if skip_overflow:
+            self._set_num_buffer(0,1,self.write_lock_mem.buf)
 
         return_list = []
         for i in range(total_blocks):
