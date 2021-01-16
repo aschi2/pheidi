@@ -208,7 +208,7 @@ class Consumer:
                     continue
         if skip_overflow:
             while True:
-                if in.from_bytes(self.write_lock_mem.buf,"big")==0:
+                if int.from_bytes(self.write_lock_mem.buf,"big")==0:
                     self._set_num_buffer(1,1,self.con_lock_mem.buf)
                     break
                 else:
