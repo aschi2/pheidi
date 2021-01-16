@@ -232,7 +232,6 @@ class Consumer:
 
         if skip_overflow:
             if total_blocks / self.qsize > 1:
-                overflow =
                 new_read_pos = self.writer_pos - (self.qsize * self.block_size)
                 overflow = (new_read_pos - self.read_pos)//self.block_size
                 self.read_pos = new_read_pos
