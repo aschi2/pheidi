@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pheidi"
-version = "0.0.14r3"
+version = "0.0.15"
 description = "Fast In Ram Memory"
 authors = ["Austin"]
 license = "MIT"

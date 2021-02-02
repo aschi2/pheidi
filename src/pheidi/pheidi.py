@@ -220,6 +220,7 @@ class Consumer:
         if minq is not None:
             while (self.writer_pos - self.read_pos) // self.block_size < minq:
                 # print((self.writer_pos - self.read_pos) // self.block_size)
+                sleep(.002)
                 self.writer_pos = copy.copy(
                     self._get_num_buffer(self.writer_pos_mem.buf)
                 )
